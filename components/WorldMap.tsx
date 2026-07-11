@@ -11,7 +11,7 @@ const WIDTH = 960;
 const HEIGHT = 500;
 const MOSAIC_COLS = 3;
 const MOSAIC_ROWS = 3;
-const TILE_SIZE = 9;
+const MAX_TILES = MOSAIC_COLS * MOSAIC_ROWS;
 
 type CountryFeature = {
   type: "Feature";
@@ -67,8 +67,6 @@ export default function WorldMap({ photosByCountry, selectedCode, onSelectCountr
     );
   }
 
-  const MAX_TILES = MOSAIC_COLS * MOSAIC_ROWS;
-
   return (
     <svg
       viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
@@ -81,23 +79,29 @@ export default function WorldMap({ photosByCountry, selectedCode, onSelectCountr
           const uniqueUrls = urls.slice(0, MAX_TILES);
           const cols = Math.min(MOSAIC_COLS, Math.ceil(Math.sqrt(uniqueUrls.length)));
           const rows = Math.min(MOSAIC_ROWS, Math.ceil(uniqueUrls.length / cols));
+          const cellW = 1 / cols;
+          const cellH = 1 / rows;
 
           return (
+            // width/height=1 with objectBoundingBox units makes the pattern
+            // tile exactly match the country shape's own bounding box, so
+            // the collage fills it once instead of repeating like wallpaper.
             <pattern
               key={code}
               id={`mosaic-${code}`}
-              patternUnits="userSpaceOnUse"
-              width={cols * TILE_SIZE}
-              height={rows * TILE_SIZE}
+              patternUnits="objectBoundingBox"
+              patternContentUnits="objectBoundingBox"
+              width={1}
+              height={1}
             >
               {uniqueUrls.map((url, i) => (
                 <image
                   key={i}
                   href={url}
-                  x={(i % cols) * TILE_SIZE}
-                  y={Math.floor(i / cols) * TILE_SIZE}
-                  width={TILE_SIZE}
-                  height={TILE_SIZE}
+                  x={(i % cols) * cellW}
+                  y={Math.floor(i / cols) * cellH}
+                  width={cellW}
+                  height={cellH}
                   preserveAspectRatio="xMidYMid slice"
                 />
               ))}
