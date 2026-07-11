@@ -30,6 +30,22 @@ type Props = {
   onSelectCountry: (code: string | null, nameEn: string) => void;
 };
 
+// Natural Earth bundles a country's overseas territories into the same
+// multipolygon as its mainland. France's feature (id 250) includes French
+// Guiana (South America, ~lon -54..-51) alongside mainland Europe and
+// Corsica, which reads as a stray patch far from the rest of the country.
+// Drop rings whose longitude sits far enough west to be that territory.
+function dropFarFlungTerritories(f: CountryFeature): CountryFeature {
+  if (f.id !== "250" || f.geometry.type !== "MultiPolygon") return f;
+
+  const coordinates = (f.geometry.coordinates as number[][][][]).filter((polygon) => {
+    const lons = polygon[0].map(([lon]) => lon);
+    return Math.max(...lons) > -20;
+  });
+
+  return { ...f, geometry: { ...f.geometry, coordinates } };
+}
+
 export default function WorldMap({ photosByCountry, selectedCode, onSelectCountry }: Props) {
   const [features, setFeatures] = useState<CountryFeature[] | null>(null);
   const [isZoomed, setIsZoomed] = useState(false);
@@ -47,7 +63,9 @@ export default function WorldMap({ photosByCountry, selectedCode, onSelectCountr
           topology,
           topology.objects.countries
         ) as unknown as FeatureCollection;
-        setFeatures(collection.features as CountryFeature[]);
+        setFeatures(
+          (collection.features as CountryFeature[]).map(dropFarFlungTerritories)
+        );
       });
     return () => {
       cancelled = true;
