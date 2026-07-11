@@ -9,6 +9,9 @@ import { getCountryByNumericId } from "@/lib/countries";
 
 const WIDTH = 960;
 const HEIGHT = 500;
+const MOSAIC_COLS = 3;
+const MOSAIC_ROWS = 3;
+const TILE_SIZE = 9;
 
 type CountryFeature = {
   type: "Feature";
@@ -18,12 +21,12 @@ type CountryFeature = {
 };
 
 type Props = {
-  visitedCodes: Set<string>;
+  photosByCountry: Map<string, string[]>;
   selectedCode: string | null;
   onSelectCountry: (code: string | null, nameEn: string) => void;
 };
 
-export default function WorldMap({ visitedCodes, selectedCode, onSelectCountry }: Props) {
+export default function WorldMap({ photosByCountry, selectedCode, onSelectCountry }: Props) {
   const [features, setFeatures] = useState<CountryFeature[] | null>(null);
 
   useEffect(() => {
@@ -64,6 +67,8 @@ export default function WorldMap({ visitedCodes, selectedCode, onSelectCountry }
     );
   }
 
+  const tileCount = MOSAIC_COLS * MOSAIC_ROWS;
+
   return (
     <svg
       viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
@@ -71,23 +76,51 @@ export default function WorldMap({ visitedCodes, selectedCode, onSelectCountry }
       role="img"
       aria-label="세계지도"
     >
+      <defs>
+        {Array.from(photosByCountry.entries()).map(([code, urls]) => (
+          <pattern
+            key={code}
+            id={`mosaic-${code}`}
+            patternUnits="userSpaceOnUse"
+            width={MOSAIC_COLS * TILE_SIZE}
+            height={MOSAIC_ROWS * TILE_SIZE}
+          >
+            {Array.from({ length: tileCount }, (_, i) => urls[i % urls.length]).map(
+              (url, i) => (
+                <image
+                  key={i}
+                  href={url}
+                  x={(i % MOSAIC_COLS) * TILE_SIZE}
+                  y={Math.floor(i / MOSAIC_COLS) * TILE_SIZE}
+                  width={TILE_SIZE}
+                  height={TILE_SIZE}
+                  preserveAspectRatio="xMidYMid slice"
+                />
+              )
+            )}
+          </pattern>
+        ))}
+      </defs>
+
       {features.map((f) => {
         const code = getCountryByNumericId(f.id ?? "")?.code;
-        const isVisited = !!code && visitedCodes.has(code);
+        const isVisited = !!code && photosByCountry.has(code);
         const isSelected = !!code && code === selectedCode;
 
-        let fillClass = "fill-neutral-200 dark:fill-neutral-700";
-        if (isVisited) fillClass = "fill-sky-400 dark:fill-sky-600";
-        if (isSelected) fillClass = "fill-amber-500";
+        const fill = isVisited ? `url(#mosaic-${code})` : undefined;
+        const fillClass = isVisited ? "" : "fill-neutral-200 dark:fill-neutral-700";
 
         return (
           <path
             key={String(f.id ?? f.properties.name)}
             d={pathFor(f)}
-            className={`stroke-white transition-colors dark:stroke-neutral-900 ${fillClass} ${
-              isVisited ? "cursor-pointer hover:fill-amber-400" : "cursor-default"
-            }`}
-            strokeWidth={0.5}
+            fill={fill}
+            className={`transition-colors ${fillClass} ${
+              isSelected
+                ? "stroke-amber-500"
+                : "stroke-white dark:stroke-neutral-900"
+            } ${isVisited ? "cursor-pointer hover:opacity-80" : "cursor-default"}`}
+            strokeWidth={isSelected ? 1.5 : 0.5}
             onClick={() => {
               if (!code) return;
               onSelectCountry(isSelected ? null : code, f.properties.name);

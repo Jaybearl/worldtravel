@@ -17,10 +17,15 @@ export default function Home() {
       .finally(() => setLoading(false));
   }, []);
 
-  const visitedCodes = useMemo(
-    () => new Set(photos.map((p) => p.countryCode)),
-    [photos]
-  );
+  const photosByCountry = useMemo(() => {
+    const map = new Map<string, string[]>();
+    for (const p of photos) {
+      const urls = map.get(p.countryCode) ?? [];
+      urls.push(p.imageUrl);
+      map.set(p.countryCode, urls);
+    }
+    return map;
+  }, [photos]);
 
   const selectedPhotos = useMemo(
     () => (selectedCode ? photos.filter((p) => p.countryCode === selectedCode) : []),
@@ -42,13 +47,13 @@ export default function Home() {
 
       <section className="rounded-xl border border-neutral-200 p-4 dark:border-neutral-800">
         <WorldMap
-          visitedCodes={visitedCodes}
+          photosByCountry={photosByCountry}
           selectedCode={selectedCode}
           onSelectCountry={(code) => setSelectedCode(code)}
         />
         {!loading && (
           <p className="mt-2 text-center text-xs text-neutral-400">
-            파란색으로 표시된 {visitedCodes.size}개국을 여행했어요. 클릭해서 사진을 확인해보세요.
+            사진으로 채워진 {photosByCountry.size}개국을 여행했어요. 클릭해서 사진을 확인해보세요.
           </p>
         )}
       </section>
