@@ -3,7 +3,7 @@
   "configurations": [
     {
       "name": "dev",
-      "runtimeExecutable": "C:\\Users\\user\\Desktop\\세계여행자\\.claude\\run-dev.cmd",
+      "runtimeExecutable": "C:\\Users\\user\\Desktop\\코딩\\세계여행자\\.claude\\run-dev.cmd",
       "runtimeArgs": [],
       "port": 3000
     }
