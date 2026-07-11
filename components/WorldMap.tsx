@@ -67,7 +67,7 @@ export default function WorldMap({ photosByCountry, selectedCode, onSelectCountr
     );
   }
 
-  const tileCount = MOSAIC_COLS * MOSAIC_ROWS;
+  const MAX_TILES = MOSAIC_COLS * MOSAIC_ROWS;
 
   return (
     <svg
@@ -77,29 +77,33 @@ export default function WorldMap({ photosByCountry, selectedCode, onSelectCountr
       aria-label="세계지도"
     >
       <defs>
-        {Array.from(photosByCountry.entries()).map(([code, urls]) => (
-          <pattern
-            key={code}
-            id={`mosaic-${code}`}
-            patternUnits="userSpaceOnUse"
-            width={MOSAIC_COLS * TILE_SIZE}
-            height={MOSAIC_ROWS * TILE_SIZE}
-          >
-            {Array.from({ length: tileCount }, (_, i) => urls[i % urls.length]).map(
-              (url, i) => (
+        {Array.from(photosByCountry.entries()).map(([code, urls]) => {
+          const uniqueUrls = urls.slice(0, MAX_TILES);
+          const cols = Math.min(MOSAIC_COLS, Math.ceil(Math.sqrt(uniqueUrls.length)));
+          const rows = Math.min(MOSAIC_ROWS, Math.ceil(uniqueUrls.length / cols));
+
+          return (
+            <pattern
+              key={code}
+              id={`mosaic-${code}`}
+              patternUnits="userSpaceOnUse"
+              width={cols * TILE_SIZE}
+              height={rows * TILE_SIZE}
+            >
+              {uniqueUrls.map((url, i) => (
                 <image
                   key={i}
                   href={url}
-                  x={(i % MOSAIC_COLS) * TILE_SIZE}
-                  y={Math.floor(i / MOSAIC_COLS) * TILE_SIZE}
+                  x={(i % cols) * TILE_SIZE}
+                  y={Math.floor(i / cols) * TILE_SIZE}
                   width={TILE_SIZE}
                   height={TILE_SIZE}
                   preserveAspectRatio="xMidYMid slice"
                 />
-              )
-            )}
-          </pattern>
-        ))}
+              ))}
+            </pattern>
+          );
+        })}
       </defs>
 
       {features.map((f) => {

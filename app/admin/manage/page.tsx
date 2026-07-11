@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import AuthGuard from "@/components/AuthGuard";
 import { getAllPhotos, deletePhoto, type Photo } from "@/lib/photos";
 
@@ -63,12 +64,12 @@ export default function ManagePage() {
         <div className="flex items-baseline justify-between">
           <h1 className="text-xl font-bold">사진 관리</h1>
           <div className="flex gap-3">
-            <a href="/" className="text-sm text-neutral-400 hover:text-neutral-600">
+            <Link href="/" className="text-sm text-neutral-400 hover:text-neutral-600">
               지도로 돌아가기
-            </a>
-            <a href="/admin/upload" className="text-sm text-neutral-400 hover:text-neutral-600">
+            </Link>
+            <Link href="/admin/upload" className="text-sm text-neutral-400 hover:text-neutral-600">
               업로드
-            </a>
+            </Link>
           </div>
         </div>
         <ManageList />
