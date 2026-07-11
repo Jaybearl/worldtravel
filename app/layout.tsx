@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "세계여행자",
+  title: "한지리의 세계여행",
   description: "내가 다녀온 나라와 도시의 여행 사진 지도",
 };
 
