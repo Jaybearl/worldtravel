@@ -39,3 +39,17 @@ export function getCountryByAlpha3(code: string): CountryOption | undefined {
 export function getCountryByNumericId(id: string | number): CountryOption | undefined {
   return byNumeric.get(String(id).padStart(3, "0"));
 }
+
+// ISO 3166-1 alpha-3 codes for dependent territories/collectivities rather
+// than sovereign states (French Guiana, Puerto Rico, Hong Kong, etc). Their
+// Korean/English names often contain their parent country's name (e.g.
+// "프랑스령 폴리네시아" contains "프랑스"), which makes them show up as noise
+// when searching for the parent country on the map. Still kept in
+// COUNTRY_LIST itself so photos can be tagged to them specifically.
+export const NON_SOVEREIGN_CODES: ReadonlySet<string> = new Set([
+  "ASM", "AIA", "ABW", "BMU", "BES", "VGB", "CYM", "CXR", "CCK", "COK",
+  "CUW", "FLK", "FRO", "GUF", "PYF", "ATF", "GIB", "GRL", "GLP", "GUM",
+  "GGY", "HKG", "IMN", "JEY", "MAC", "MTQ", "MYT", "MSR", "NCL", "NIU",
+  "NFK", "MNP", "PCN", "PRI", "REU", "BLM", "MAF", "SPM", "SXM", "SGS",
+  "SJM", "TKL", "TCA", "VIR", "WLF",
+]);

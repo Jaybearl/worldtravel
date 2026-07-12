@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { COUNTRY_LIST, getCountryByAlpha3 } from "@/lib/countries";
+import { COUNTRY_LIST, NON_SOVEREIGN_CODES, getCountryByAlpha3 } from "@/lib/countries";
 
 export type CityIndexEntry = { city: string; countryCode: string };
 
@@ -43,6 +43,7 @@ export default function MapSearch({ value, cityIndex, onSelect }: Props) {
     const items: ResultItem[] = [];
 
     for (const c of COUNTRY_LIST) {
+      if (NON_SOVEREIGN_CODES.has(c.code)) continue;
       if (c.nameKo.includes(q) || c.nameEn.toLowerCase().includes(qLower)) {
         items.push({ key: `country-${c.code}`, code: c.code, label: `${c.nameKo} (${c.nameEn})` });
       }
@@ -50,6 +51,7 @@ export default function MapSearch({ value, cityIndex, onSelect }: Props) {
 
     const seenCities = new Set<string>();
     for (const entry of cityIndex) {
+      if (NON_SOVEREIGN_CODES.has(entry.countryCode)) continue;
       if (!entry.city.toLowerCase().includes(qLower) && !entry.city.includes(q)) continue;
       const dedupeKey = `${entry.city}-${entry.countryCode}`;
       if (seenCities.has(dedupeKey)) continue;
