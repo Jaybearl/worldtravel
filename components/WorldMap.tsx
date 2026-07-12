@@ -7,8 +7,8 @@ import { select } from "d3-selection";
 import { zoom, zoomIdentity, type ZoomBehavior } from "d3-zoom";
 import type { FeatureCollection, Geometry } from "geojson";
 import type { Topology } from "topojson-specification";
-import { getCountryByAlpha3, getCountryByNumericId } from "@/lib/countries";
-import CountrySelect from "@/components/CountrySelect";
+import { getCountryByNumericId } from "@/lib/countries";
+import MapSearch, { type CityIndexEntry } from "@/components/MapSearch";
 
 const WIDTH = 960;
 const HEIGHT = 500;
@@ -28,6 +28,7 @@ type CountryFeature = {
 
 type Props = {
   photosByCountry: Map<string, string[]>;
+  cityIndex: CityIndexEntry[];
   selectedCode: string | null;
   onSelectCountry: (code: string | null, nameEn: string) => void;
 };
@@ -50,7 +51,12 @@ function dropFarFlungTerritories(f: CountryFeature): CountryFeature {
   return { ...f, geometry: { ...f.geometry, coordinates } };
 }
 
-export default function WorldMap({ photosByCountry, selectedCode, onSelectCountry }: Props) {
+export default function WorldMap({
+  photosByCountry,
+  cityIndex,
+  selectedCode,
+  onSelectCountry,
+}: Props) {
   const [features, setFeatures] = useState<CountryFeature[] | null>(null);
   const [isZoomed, setIsZoomed] = useState(false);
   const svgRef = useRef<SVGSVGElement | null>(null);
@@ -144,11 +150,6 @@ export default function WorldMap({ photosByCountry, selectedCode, onSelectCountr
     select(svgRef.current).call(zoomBehaviorRef.current.transform, zoomIdentity);
   }
 
-  function handleSearchSelect(code: string) {
-    const country = getCountryByAlpha3(code);
-    onSelectCountry(code, country?.nameEn ?? code);
-  }
-
   if (!features) {
     return (
       <div className="flex h-[500px] w-full items-center justify-center text-sm text-neutral-400">
@@ -233,7 +234,7 @@ export default function WorldMap({ photosByCountry, selectedCode, onSelectCountr
       </svg>
 
       <div className="absolute left-2 top-2 w-36 sm:w-48">
-        <CountrySelect value={selectedCode ?? ""} onChange={handleSearchSelect} />
+        <MapSearch value={selectedCode ?? ""} cityIndex={cityIndex} onSelect={onSelectCountry} />
       </div>
 
       {isZoomed && (

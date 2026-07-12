@@ -28,6 +28,19 @@ export default function Home() {
     return map;
   }, [photos]);
 
+  const cityIndex = useMemo(() => {
+    const seen = new Set<string>();
+    const list: { city: string; countryCode: string }[] = [];
+    for (const p of photos) {
+      if (!p.city) continue;
+      const key = `${p.city}-${p.countryCode}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      list.push({ city: p.city, countryCode: p.countryCode });
+    }
+    return list;
+  }, [photos]);
+
   const selectedPhotos = useMemo(
     () => (selectedCode ? photos.filter((p) => p.countryCode === selectedCode) : []),
     [photos, selectedCode]
@@ -49,6 +62,7 @@ export default function Home() {
       <section className="rounded-xl border border-neutral-200 p-4 dark:border-neutral-800">
         <WorldMap
           photosByCountry={photosByCountry}
+          cityIndex={cityIndex}
           selectedCode={selectedCode}
           onSelectCountry={(code) => setSelectedCode(code)}
         />
