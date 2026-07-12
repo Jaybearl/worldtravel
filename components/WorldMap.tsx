@@ -7,7 +7,7 @@ import { select } from "d3-selection";
 import { zoom, zoomIdentity, type ZoomBehavior } from "d3-zoom";
 import type { FeatureCollection, Geometry } from "geojson";
 import type { Topology } from "topojson-specification";
-import { getCountryByNumericId } from "@/lib/countries";
+import { getCountryByAlpha3, getCountryByNumericId } from "@/lib/countries";
 import CountrySelect from "@/components/CountrySelect";
 
 const WIDTH = 960;
@@ -17,6 +17,7 @@ const MOSAIC_ROWS = 3;
 const MAX_TILES = MOSAIC_COLS * MOSAIC_ROWS;
 const MIN_ZOOM = 1;
 const MAX_ZOOM = 8;
+const FOCUS_FIT_RATIO = 0.6; // target country fills ~60% of the viewport when focused
 
 type CountryFeature = {
   type: "Feature";
@@ -52,7 +53,6 @@ function dropFarFlungTerritories(f: CountryFeature): CountryFeature {
 export default function WorldMap({ photosByCountry, selectedCode, onSelectCountry }: Props) {
   const [features, setFeatures] = useState<CountryFeature[] | null>(null);
   const [isZoomed, setIsZoomed] = useState(false);
-  const [highlightedCode, setHighlightedCode] = useState("");
   const svgRef = useRef<SVGSVGElement | null>(null);
   const gRef = useRef<SVGGElement | null>(null);
   const zoomBehaviorRef = useRef<ZoomBehavior<SVGSVGElement, unknown> | null>(null);
@@ -76,8 +76,10 @@ export default function WorldMap({ photosByCountry, selectedCode, onSelectCountr
     };
   }, []);
 
-  const { pathFor } = useMemo(() => {
-    if (!features) return { pathFor: () => "" };
+  const { pathFor, centroidFor, boundsFor } = useMemo(() => {
+    if (!features) {
+      return { pathFor: () => "", centroidFor: () => null, boundsFor: () => null };
+    }
     const collection: FeatureCollection = {
       type: "FeatureCollection",
       features: features as unknown as FeatureCollection["features"],
@@ -86,6 +88,8 @@ export default function WorldMap({ photosByCountry, selectedCode, onSelectCountr
     const path = geoPath(projection);
     return {
       pathFor: (f: CountryFeature) => path(f as unknown as never) ?? "",
+      centroidFor: (f: CountryFeature) => path.centroid(f as unknown as never),
+      boundsFor: (f: CountryFeature) => path.bounds(f as unknown as never),
     };
   }, [features]);
 
@@ -110,9 +114,39 @@ export default function WorldMap({ photosByCountry, selectedCode, onSelectCountr
     };
   }, [features]);
 
+  // Center and zoom in on whichever country becomes selected, whether that
+  // came from clicking the map or picking a result in the search box.
+  useEffect(() => {
+    if (!selectedCode || !features || !svgRef.current || !zoomBehaviorRef.current) return;
+
+    const target = features.find(
+      (f) => getCountryByNumericId(f.id ?? "")?.code === selectedCode
+    );
+    if (!target) return;
+
+    const centroid = centroidFor(target);
+    const bounds = boundsFor(target);
+    if (!centroid || !bounds || centroid.some((n) => Number.isNaN(n))) return;
+
+    const [[x0, y0], [x1, y1]] = bounds;
+    const boxWidth = Math.max(x1 - x0, 1);
+    const boxHeight = Math.max(y1 - y0, 1);
+    const fitScale = FOCUS_FIT_RATIO * Math.min(WIDTH / boxWidth, HEIGHT / boxHeight);
+    const k = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, fitScale));
+
+    const [cx, cy] = centroid;
+    const transform = zoomIdentity.translate(WIDTH / 2 - cx * k, HEIGHT / 2 - cy * k).scale(k);
+    select(svgRef.current).call(zoomBehaviorRef.current.transform, transform);
+  }, [selectedCode, features, centroidFor, boundsFor]);
+
   function handleResetZoom() {
     if (!svgRef.current || !zoomBehaviorRef.current) return;
     select(svgRef.current).call(zoomBehaviorRef.current.transform, zoomIdentity);
+  }
+
+  function handleSearchSelect(code: string) {
+    const country = getCountryByAlpha3(code);
+    onSelectCountry(code, country?.nameEn ?? code);
   }
 
   if (!features) {
@@ -173,24 +207,21 @@ export default function WorldMap({ photosByCountry, selectedCode, onSelectCountr
             const code = getCountryByNumericId(f.id ?? "")?.code;
             const isVisited = !!code && photosByCountry.has(code);
             const isSelected = !!code && code === selectedCode;
-            const isHighlighted = !!code && code === highlightedCode;
 
             const fill = isVisited ? `url(#mosaic-${code})` : undefined;
             const fillClass = isVisited ? "" : "fill-neutral-200 dark:fill-neutral-700";
-
-            let strokeClass = "stroke-white dark:stroke-neutral-900";
-            if (isSelected) strokeClass = "stroke-amber-500";
-            if (isHighlighted) strokeClass = "stroke-red-500 dark:stroke-red-400";
 
             return (
               <path
                 key={`${f.properties.name}-${String(f.id ?? "")}`}
                 d={pathFor(f)}
                 fill={fill}
-                className={`transition-colors ${fillClass} ${strokeClass} ${
-                  isVisited ? "cursor-pointer hover:opacity-80" : "cursor-default"
-                }`}
-                strokeWidth={isHighlighted ? 2.5 : isSelected ? 1.5 : 0.5}
+                className={`transition-colors ${fillClass} ${
+                  isSelected
+                    ? "stroke-amber-500"
+                    : "stroke-white dark:stroke-neutral-900"
+                } ${isVisited ? "cursor-pointer hover:opacity-80" : "cursor-default"}`}
+                strokeWidth={isSelected ? 1.5 : 0.5}
                 onClick={() => {
                   if (!code) return;
                   onSelectCountry(isSelected ? null : code, f.properties.name);
@@ -202,7 +233,7 @@ export default function WorldMap({ photosByCountry, selectedCode, onSelectCountr
       </svg>
 
       <div className="absolute left-2 top-2 w-36 sm:w-48">
-        <CountrySelect value={highlightedCode} onChange={setHighlightedCode} />
+        <CountrySelect value={selectedCode ?? ""} onChange={handleSearchSelect} />
       </div>
 
       {isZoomed && (
