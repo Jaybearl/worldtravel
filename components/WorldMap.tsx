@@ -8,6 +8,7 @@ import { zoom, zoomIdentity, type ZoomBehavior } from "d3-zoom";
 import type { FeatureCollection, Geometry } from "geojson";
 import type { Topology } from "topojson-specification";
 import { getCountryByNumericId } from "@/lib/countries";
+import CountrySelect from "@/components/CountrySelect";
 
 const WIDTH = 960;
 const HEIGHT = 500;
@@ -51,6 +52,7 @@ function dropFarFlungTerritories(f: CountryFeature): CountryFeature {
 export default function WorldMap({ photosByCountry, selectedCode, onSelectCountry }: Props) {
   const [features, setFeatures] = useState<CountryFeature[] | null>(null);
   const [isZoomed, setIsZoomed] = useState(false);
+  const [highlightedCode, setHighlightedCode] = useState("");
   const svgRef = useRef<SVGSVGElement | null>(null);
   const gRef = useRef<SVGGElement | null>(null);
   const zoomBehaviorRef = useRef<ZoomBehavior<SVGSVGElement, unknown> | null>(null);
@@ -126,7 +128,7 @@ export default function WorldMap({ photosByCountry, selectedCode, onSelectCountr
       <svg
         ref={svgRef}
         viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
-        className="h-auto w-full touch-none select-none"
+        className="h-auto w-full touch-none select-none rounded-lg bg-sky-100 dark:bg-slate-800"
         role="img"
         aria-label="세계지도"
       >
@@ -171,21 +173,24 @@ export default function WorldMap({ photosByCountry, selectedCode, onSelectCountr
             const code = getCountryByNumericId(f.id ?? "")?.code;
             const isVisited = !!code && photosByCountry.has(code);
             const isSelected = !!code && code === selectedCode;
+            const isHighlighted = !!code && code === highlightedCode;
 
             const fill = isVisited ? `url(#mosaic-${code})` : undefined;
             const fillClass = isVisited ? "" : "fill-neutral-200 dark:fill-neutral-700";
+
+            let strokeClass = "stroke-white dark:stroke-neutral-900";
+            if (isSelected) strokeClass = "stroke-amber-500";
+            if (isHighlighted) strokeClass = "stroke-red-500 dark:stroke-red-400";
 
             return (
               <path
                 key={`${f.properties.name}-${String(f.id ?? "")}`}
                 d={pathFor(f)}
                 fill={fill}
-                className={`transition-colors ${fillClass} ${
-                  isSelected
-                    ? "stroke-amber-500"
-                    : "stroke-white dark:stroke-neutral-900"
-                } ${isVisited ? "cursor-pointer hover:opacity-80" : "cursor-default"}`}
-                strokeWidth={isSelected ? 1.5 : 0.5}
+                className={`transition-colors ${fillClass} ${strokeClass} ${
+                  isVisited ? "cursor-pointer hover:opacity-80" : "cursor-default"
+                }`}
+                strokeWidth={isHighlighted ? 2.5 : isSelected ? 1.5 : 0.5}
                 onClick={() => {
                   if (!code) return;
                   onSelectCountry(isSelected ? null : code, f.properties.name);
@@ -195,6 +200,10 @@ export default function WorldMap({ photosByCountry, selectedCode, onSelectCountr
           })}
         </g>
       </svg>
+
+      <div className="absolute left-2 top-2 w-36 sm:w-48">
+        <CountrySelect value={highlightedCode} onChange={setHighlightedCode} />
+      </div>
 
       {isZoomed && (
         <button
