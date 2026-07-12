@@ -7,6 +7,7 @@ import { storage } from "@/lib/firebase";
 import { addPhoto } from "@/lib/photos";
 import { COUNTRY_LIST, getCountryByAlpha3 } from "@/lib/countries";
 import { geocodeCity } from "@/lib/geocode";
+import CountrySelect from "@/components/CountrySelect";
 
 function isDuplicate(a: File, b: File) {
   return a.name === b.name && a.size === b.size && a.lastModified === b.lastModified;
@@ -123,17 +124,7 @@ export default function UploadForm() {
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       <div>
         <label className="mb-1 block text-sm font-medium">국가</label>
-        <select
-          value={countryCode}
-          onChange={(e) => setCountryCode(e.target.value)}
-          className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-900"
-        >
-          {COUNTRY_LIST.map((c) => (
-            <option key={c.code} value={c.code}>
-              {c.nameKo} ({c.nameEn})
-            </option>
-          ))}
-        </select>
+        <CountrySelect value={countryCode} onChange={setCountryCode} />
       </div>
 
       <div>

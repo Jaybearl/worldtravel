@@ -5,7 +5,8 @@ import Image from "next/image";
 import Link from "next/link";
 import AuthGuard from "@/components/AuthGuard";
 import { getAllPhotos, deletePhoto, updatePhoto, type Photo } from "@/lib/photos";
-import { COUNTRY_LIST, getCountryByAlpha3 } from "@/lib/countries";
+import { getCountryByAlpha3 } from "@/lib/countries";
+import CountrySelect from "@/components/CountrySelect";
 
 type EditState = {
   countryCode: string;
@@ -73,17 +74,10 @@ function PhotoCard({
 
       {editing ? (
         <div className="flex flex-col gap-1.5 p-2">
-          <select
+          <CountrySelect
             value={form.countryCode}
-            onChange={(e) => setForm((f) => ({ ...f, countryCode: e.target.value }))}
-            className="rounded border border-neutral-300 px-1.5 py-1 text-xs dark:border-neutral-700 dark:bg-neutral-900"
-          >
-            {COUNTRY_LIST.map((c) => (
-              <option key={c.code} value={c.code}>
-                {c.nameKo}
-              </option>
-            ))}
-          </select>
+            onChange={(code) => setForm((f) => ({ ...f, countryCode: code }))}
+          />
           <input
             type="text"
             value={form.city}

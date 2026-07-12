@@ -32,15 +32,17 @@ type Props = {
 
 // Natural Earth bundles a country's overseas territories into the same
 // multipolygon as its mainland. France's feature (id 250) includes French
-// Guiana (South America, ~lon -54..-51) alongside mainland Europe and
-// Corsica, which reads as a stray patch far from the rest of the country.
-// Drop rings whose longitude sits far enough west to be that territory.
+// Guiana (South America), Martinique/Guadeloupe (Caribbean), and Mayotte/
+// Réunion (Indian Ocean, near Africa) alongside mainland Europe and
+// Corsica - all of which read as stray patches far from the rest of the
+// country. All of those territories sit south of latitude 35°N, while
+// mainland France and Corsica don't, so filter rings on that basis.
 function dropFarFlungTerritories(f: CountryFeature): CountryFeature {
   if (f.id !== "250" || f.geometry.type !== "MultiPolygon") return f;
 
   const coordinates = (f.geometry.coordinates as number[][][][]).filter((polygon) => {
-    const lons = polygon[0].map(([lon]) => lon);
-    return Math.max(...lons) > -20;
+    const lats = polygon[0].map(([, lat]) => lat);
+    return Math.max(...lats) > 35;
   });
 
   return { ...f, geometry: { ...f.geometry, coordinates } };
@@ -55,7 +57,7 @@ export default function WorldMap({ photosByCountry, selectedCode, onSelectCountr
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/data/countries-110m.json")
+    fetch("/data/countries-50m.json")
       .then((res) => res.json())
       .then((topology: Topology) => {
         if (cancelled) return;
@@ -175,7 +177,7 @@ export default function WorldMap({ photosByCountry, selectedCode, onSelectCountr
 
             return (
               <path
-                key={String(f.id ?? f.properties.name)}
+                key={`${f.properties.name}-${String(f.id ?? "")}`}
                 d={pathFor(f)}
                 fill={fill}
                 className={`transition-colors ${fillClass} ${
