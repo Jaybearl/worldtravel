@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getCountryByAlpha3, getFlagEmoji } from "@/lib/countries";
+import { getCountryByAlpha3 } from "@/lib/countries";
 import { CURRENCY_BY_COUNTRY } from "@/lib/currencyByCountry";
 
 const QUOTE_UNITS = [1, 10, 100, 1000, 10000, 100000];
@@ -53,7 +53,12 @@ export default function CountryInfoPanel({ code }: Props) {
 
   return (
     <div className="absolute bottom-2 left-2 flex items-center gap-2 rounded-lg border border-neutral-300 bg-white/90 px-3 py-2 shadow-sm dark:border-neutral-700 dark:bg-neutral-900/90">
-      <span className="text-3xl leading-none">{getFlagEmoji(country.alpha2)}</span>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={`https://flagcdn.com/w80/${country.alpha2.toLowerCase()}.png`}
+        alt={`${country.nameKo} 국기`}
+        className="h-7 w-10 rounded-sm object-cover shadow-sm"
+      />
       <div className="text-xs leading-tight">
         <p className="font-medium text-neutral-700 dark:text-neutral-200">{country.nameKo}</p>
         {currency && (

@@ -7,7 +7,7 @@ countries.registerLocale(ko);
 
 export type CountryOption = {
   code: string; // ISO 3166-1 alpha-3, used as the canonical countryCode everywhere
-  alpha2: string; // ISO 3166-1 alpha-2, used for flag emoji
+  alpha2: string; // ISO 3166-1 alpha-2, used for flag images
   nameKo: string;
   nameEn: string;
   numeric: string; // ISO 3166-1 numeric, matches world-atlas topojson `id`
@@ -26,14 +26,6 @@ function buildCountryList(): CountryOption[] {
   }
 
   return list.sort((a, b) => a.nameKo.localeCompare(b.nameKo, "ko"));
-}
-
-// Flag emoji is just two Unicode "regional indicator" letters, so it can be
-// derived directly from an alpha-2 code with no image/CDN dependency.
-export function getFlagEmoji(alpha2: string): string {
-  return alpha2
-    .toUpperCase()
-    .replace(/./g, (char) => String.fromCodePoint(127397 + char.charCodeAt(0)));
 }
 
 export const COUNTRY_LIST: CountryOption[] = buildCountryList();
