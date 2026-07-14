@@ -5,6 +5,7 @@ import { getCountryByAlpha3 } from "@/lib/countries";
 import { CURRENCY_BY_COUNTRY } from "@/lib/currencyByCountry";
 import { GEO_INFO } from "@/lib/geoInfo";
 import { getPopulation } from "@/lib/population";
+import { TIMEZONE_BY_COUNTRY } from "@/lib/timezones";
 
 const QUOTE_UNITS = [1, 10, 100, 1000, 10000, 100000];
 
@@ -25,9 +26,17 @@ export default function CountryInfoPanel({ code }: Props) {
     "loading"
   );
 
+  const [now, setNow] = useState(() => new Date());
+
   const country = getCountryByAlpha3(code);
   const currency = CURRENCY_BY_COUNTRY[code];
   const geo = GEO_INFO[code];
+  const timezone = TIMEZONE_BY_COUNTRY[code];
+
+  useEffect(() => {
+    const interval = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     if (!currency || currency.code === "KRW") return;
@@ -73,6 +82,18 @@ export default function CountryInfoPanel({ code }: Props) {
   if (!country) return null;
 
   const unit = rate !== null ? pickQuoteUnit(rate) : 1;
+  const localDateTime = timezone
+    ? new Intl.DateTimeFormat("ko-KR", {
+        timeZone: timezone,
+        month: "long",
+        day: "numeric",
+        weekday: "short",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: false,
+      }).format(now)
+    : null;
 
   return (
     <div className="absolute bottom-2 left-2 flex max-w-[15rem] items-start gap-2 rounded-lg border border-neutral-300 bg-white/95 px-3 py-2 shadow-sm dark:border-neutral-700 dark:bg-neutral-900/95">
@@ -86,6 +107,10 @@ export default function CountryInfoPanel({ code }: Props) {
         <p className="text-sm font-semibold text-neutral-800 dark:text-neutral-100">
           {country.nameKo}
         </p>
+
+        {localDateTime && (
+          <p className="font-medium text-amber-600 dark:text-amber-400">현지 {localDateTime}</p>
+        )}
 
         {geo && (
           <>
