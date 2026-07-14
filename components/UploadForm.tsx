@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import imageCompression from "browser-image-compression";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { storage } from "@/lib/firebase";
-import { addPhoto } from "@/lib/photos";
+import { addPhoto, deletePhoto, getAllPhotos, hashFile, type Photo } from "@/lib/photos";
 import { COUNTRY_LIST, getCountryByAlpha3 } from "@/lib/countries";
 import { geocodeCity } from "@/lib/geocode";
 import CountrySelect from "@/components/CountrySelect";
@@ -24,9 +24,18 @@ export default function UploadForm() {
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [dragActive, setDragActive] = useState(false);
+  const existingByHashRef = useRef<Map<string, Photo>>(new Map());
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dropZoneRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    getAllPhotos().then((photos) => {
+      for (const p of photos) {
+        if (p.contentHash) existingByHashRef.current.set(p.contentHash, p);
+      }
+    });
+  }, []);
 
   function addFiles(incoming: File[]) {
     const images = incoming.filter((f) => f.type.startsWith("image/"));
@@ -87,7 +96,28 @@ export default function UploadForm() {
     setMessage(null);
     setProgress({ done: 0, total: files.length });
 
+    let uploadedCount = 0;
+    let skippedCount = 0;
+
     for (const file of files) {
+      const hash = await hashFile(file);
+      const existing = existingByHashRef.current.get(hash);
+
+      if (existing) {
+        const replace = confirm(
+          `"${file.name}"은(는) 이미 업로드된 사진과 동일해 보여요 ` +
+            `(${existing.countryNameKo} · ${existing.city} · ${existing.takenAt}).\n\n` +
+            `확인: 기존 사진을 삭제하고 이 사진으로 교체\n취소: 이 사진은 건너뛰기`
+        );
+        setProgress((p) => (p ? { ...p, done: p.done + 1 } : p));
+        if (!replace) {
+          skippedCount++;
+          continue;
+        }
+        await deletePhoto(existing);
+        existingByHashRef.current.delete(hash);
+      }
+
       const compressed = await imageCompression(file, {
         maxSizeMB: 1.5,
         maxWidthOrHeight: 2000,
@@ -110,12 +140,17 @@ export default function UploadForm() {
         lng: coords?.lng ?? null,
         caption,
         takenAt,
+        contentHash: hash,
       });
 
-      setProgress((p) => (p ? { ...p, done: p.done + 1 } : p));
+      uploadedCount++;
+      if (!existing) setProgress((p) => (p ? { ...p, done: p.done + 1 } : p));
     }
 
-    setMessage(`${files.length}장의 사진을 업로드했어요.`);
+    const parts = [];
+    if (uploadedCount > 0) parts.push(`${uploadedCount}장을 업로드했어요`);
+    if (skippedCount > 0) parts.push(`${skippedCount}장은 중복이라 건너뛰었어요`);
+    setMessage(parts.join(", ") + ".");
     setFiles([]);
     setProgress(null);
   }
