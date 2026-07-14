@@ -9,6 +9,7 @@ import type { FeatureCollection, Geometry } from "geojson";
 import type { Topology } from "topojson-specification";
 import { getCountryByNumericId } from "@/lib/countries";
 import MapSearch, { type CityIndexEntry } from "@/components/MapSearch";
+import CountryInfoPanel from "@/components/CountryInfoPanel";
 
 const WIDTH = 960;
 const HEIGHT = 500;
@@ -246,6 +247,8 @@ export default function WorldMap({
           확대 초기화
         </button>
       )}
+
+      {selectedCode && <CountryInfoPanel key={selectedCode} code={selectedCode} />}
     </div>
   );
 }
