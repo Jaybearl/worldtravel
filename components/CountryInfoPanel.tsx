@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { getCountryByAlpha3 } from "@/lib/countries";
 import { CURRENCY_BY_COUNTRY } from "@/lib/currencyByCountry";
+import { CURRENCY_NAME_KO } from "@/lib/currencyName";
 import { GEO_INFO } from "@/lib/geoInfo";
 import { getPopulation } from "@/lib/population";
 import { TIMEZONE_BY_COUNTRY } from "@/lib/timezones";
@@ -138,12 +139,12 @@ export default function CountryInfoPanel({ code }: Props) {
             {currency.code === "KRW"
               ? "대한민국 원(KRW)"
               : rateStatus === "loading"
-                ? "환율 조회 중..."
+                ? `${CURRENCY_NAME_KO[currency.code] ?? currency.code}(${currency.code}) 환율 조회 중...`
                 : rateStatus === "error" || rate === null
-                  ? "환율 정보 없음"
-                  : `${unit.toLocaleString()} ${currency.code} ≈ ${Math.round(
-                      rate * unit
-                    ).toLocaleString()}원`}
+                  ? `${CURRENCY_NAME_KO[currency.code] ?? currency.code}(${currency.code}) 환율 정보 없음`
+                  : `${unit.toLocaleString()} ${CURRENCY_NAME_KO[currency.code] ?? currency.code}(${
+                      currency.code
+                    }) ≈ ${Math.round(rate * unit).toLocaleString()}원`}
           </p>
         )}
       </div>
