@@ -7,6 +7,10 @@ import { CURRENCY_NAME_KO } from "@/lib/currencyName";
 import { GEO_INFO } from "@/lib/geoInfo";
 import { getPopulation } from "@/lib/population";
 import { TIMEZONE_BY_COUNTRY } from "@/lib/timezones";
+import { getCached } from "@/lib/apiCache";
+
+const ONE_HOUR = 60 * 60 * 1000;
+const ONE_DAY = 24 * ONE_HOUR;
 
 const QUOTE_UNITS = [1, 10, 100, 1000, 10000, 100000];
 
@@ -43,17 +47,18 @@ export default function CountryInfoPanel({ code }: Props) {
     if (!currency || currency.code === "KRW") return;
 
     let cancelled = false;
-    fetch(`https://open.er-api.com/v6/latest/${currency.code}`)
-      .then((res) => (res.ok ? res.json() : Promise.reject()))
-      .then((data) => {
+    getCached(`rate:${currency.code}`, ONE_HOUR, async () => {
+      const res = await fetch(`https://open.er-api.com/v6/latest/${currency.code}`);
+      if (!res.ok) throw new Error("rate fetch failed");
+      const data = await res.json();
+      const krw = data?.rates?.KRW;
+      if (typeof krw !== "number") throw new Error("no KRW rate");
+      return krw;
+    })
+      .then((krw) => {
         if (cancelled) return;
-        const krw = data?.rates?.KRW;
-        if (typeof krw === "number") {
-          setRate(krw);
-          setRateStatus("idle");
-        } else {
-          setRateStatus("error");
-        }
+        setRate(krw);
+        setRateStatus("idle");
       })
       .catch(() => {
         if (!cancelled) setRateStatus("error");
@@ -66,7 +71,7 @@ export default function CountryInfoPanel({ code }: Props) {
 
   useEffect(() => {
     let cancelled = false;
-    getPopulation(code).then((value) => {
+    getCached(`population:${code}`, ONE_DAY, () => getPopulation(code)).then((value) => {
       if (cancelled) return;
       if (value !== null) {
         setPopulation(value);

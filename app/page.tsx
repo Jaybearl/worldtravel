@@ -55,9 +55,14 @@ export default function Home() {
         >
           한지리의 세계여행
         </button>
-        <Link href="/admin/login" className="text-sm text-neutral-400 hover:text-neutral-600">
-          관리자
-        </Link>
+        <div className="flex gap-3">
+          <Link href="/timeline" className="text-sm text-neutral-400 hover:text-neutral-600">
+            여행 연표
+          </Link>
+          <Link href="/admin/login" className="text-sm text-neutral-400 hover:text-neutral-600">
+            관리자
+          </Link>
+        </div>
       </header>
 
       <section className="rounded-xl border border-neutral-200 p-4 dark:border-neutral-800">
