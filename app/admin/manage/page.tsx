@@ -186,6 +186,7 @@ function MigrateToWebpButton({
     setMigrating(true);
     let done = 0;
     let failed = 0;
+    let firstError: string | null = null;
     setProgress({ done, failed, total: targets.length });
 
     for (const photo of targets) {
@@ -216,14 +217,20 @@ function MigrateToWebpButton({
 
         onPhotoMigrated(photo.id, updates);
         done++;
-      } catch {
+      } catch (e) {
         failed++;
+        const msg = e instanceof Error ? e.message : String(e);
+        console.error("WebP 재압축 실패:", photo.id, photo.imageUrl, e);
+        if (!firstError) firstError = msg;
       }
       setProgress({ done, failed, total: targets.length });
     }
 
     setMigrating(false);
-    alert(`재압축 완료: 성공 ${done}장, 실패 ${failed}장`);
+    alert(
+      `재압축 완료: 성공 ${done}장, 실패 ${failed}장` +
+        (firstError ? `\n\n첫 번째 오류 내용:\n${firstError}` : "")
+    );
   }
 
   if (targets.length === 0) return null;
