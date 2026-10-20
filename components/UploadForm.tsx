@@ -118,13 +118,21 @@ export default function UploadForm() {
         existingByHashRef.current.delete(hash);
       }
 
+      // Drive compression by quality/resolution rather than a tight size
+      // cap: WebP at 0.85 quality looks visually close to the original but
+      // is much smaller than an equivalent JPEG, and maxSizeMB is only a
+      // generous safety net so the library doesn't crush quality further
+      // on busy, detailed photos just to hit a byte target.
       const compressed = await imageCompression(file, {
-        maxSizeMB: 1.5,
+        maxSizeMB: 3,
         maxWidthOrHeight: 2000,
+        initialQuality: 0.85,
+        fileType: "image/webp",
         useWebWorker: true,
       });
 
-      const path = `photos/${country.code}/${city}/${crypto.randomUUID()}-${file.name}`;
+      const baseName = file.name.replace(/\.[^./]+$/, "");
+      const path = `photos/${country.code}/${city}/${crypto.randomUUID()}-${baseName}.webp`;
       const storageRef = ref(storage, path);
       await uploadBytes(storageRef, compressed);
       const imageUrl = await getDownloadURL(storageRef);
