@@ -7,15 +7,12 @@ import { select } from "d3-selection";
 import { zoom, zoomIdentity, type ZoomBehavior } from "d3-zoom";
 import type { FeatureCollection, Geometry } from "geojson";
 import type { Topology } from "topojson-specification";
-import { getCountryByNumericId } from "@/lib/countries";
+import { getCountryByAlpha3, getCountryByNumericId } from "@/lib/countries";
 import MapSearch, { type CityIndexEntry } from "@/components/MapSearch";
 import CountryInfoPanel from "@/components/CountryInfoPanel";
 
 const WIDTH = 960;
 const HEIGHT = 500;
-const MOSAIC_COLS = 3;
-const MOSAIC_ROWS = 3;
-const MAX_TILES = MOSAIC_COLS * MOSAIC_ROWS;
 const MIN_ZOOM = 1;
 const MAX_ZOOM = 8;
 const FOCUS_FIT_RATIO = 0.6; // target country fills ~60% of the viewport when focused
@@ -28,7 +25,7 @@ type CountryFeature = {
 };
 
 type Props = {
-  photosByCountry: Map<string, string[]>;
+  visitedCodes: Set<string>;
   cityIndex: CityIndexEntry[];
   selectedCode: string | null;
   onSelectCountry: (code: string | null, nameEn: string) => void;
@@ -53,7 +50,7 @@ function dropFarFlungTerritories(f: CountryFeature): CountryFeature {
 }
 
 export default function WorldMap({
-  photosByCountry,
+  visitedCodes,
   cityIndex,
   selectedCode,
   onSelectCountry,
@@ -169,36 +166,29 @@ export default function WorldMap({
         aria-label="세계지도"
       >
         <defs>
-          {Array.from(photosByCountry.entries()).map(([code, urls]) => {
-            const uniqueUrls = urls.slice(0, MAX_TILES);
-            const cols = Math.min(MOSAIC_COLS, Math.ceil(Math.sqrt(uniqueUrls.length)));
-            const rows = Math.min(MOSAIC_ROWS, Math.ceil(uniqueUrls.length / cols));
-            const cellW = 1 / cols;
-            const cellH = 1 / rows;
-
+          {Array.from(visitedCodes).map((code) => {
+            const country = getCountryByAlpha3(code);
+            if (!country) return null;
             return (
-              // width/height=1 with objectBoundingBox units makes the pattern
-              // tile exactly match the country shape's own bounding box, so
-              // the collage fills it once instead of repeating like wallpaper.
+              // width/height=1 with objectBoundingBox units makes the flag
+              // image fill the country shape's own bounding box exactly
+              // once, instead of tiling like wallpaper.
               <pattern
-                key={code}
-                id={`mosaic-${code}`}
+                key={country.code}
+                id={`flag-${country.code}`}
                 patternUnits="objectBoundingBox"
                 patternContentUnits="objectBoundingBox"
                 width={1}
                 height={1}
               >
-                {uniqueUrls.map((url, i) => (
-                  <image
-                    key={i}
-                    href={url}
-                    x={(i % cols) * cellW}
-                    y={Math.floor(i / cols) * cellH}
-                    width={cellW}
-                    height={cellH}
-                    preserveAspectRatio="xMidYMid slice"
-                  />
-                ))}
+                <image
+                  href={`https://flagcdn.com/w160/${country.alpha2.toLowerCase()}.png`}
+                  x={0}
+                  y={0}
+                  width={1}
+                  height={1}
+                  preserveAspectRatio="xMidYMid slice"
+                />
               </pattern>
             );
           })}
@@ -207,10 +197,10 @@ export default function WorldMap({
         <g ref={gRef}>
           {features.map((f) => {
             const code = getCountryByNumericId(f.id ?? "")?.code;
-            const isVisited = !!code && photosByCountry.has(code);
+            const isVisited = !!code && visitedCodes.has(code);
             const isSelected = !!code && code === selectedCode;
 
-            const fill = isVisited ? `url(#mosaic-${code})` : undefined;
+            const fill = isVisited ? `url(#flag-${code})` : undefined;
             const fillClass = isVisited ? "" : "fill-neutral-200 dark:fill-neutral-700";
 
             return (
