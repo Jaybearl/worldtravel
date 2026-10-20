@@ -3,8 +3,17 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import imageCompression from "browser-image-compression";
+import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
+import { storage } from "@/lib/firebase";
 import AuthGuard from "@/components/AuthGuard";
-import { getAllPhotos, deletePhoto, updatePhoto, type Photo } from "@/lib/photos";
+import {
+  getAllPhotos,
+  deletePhoto,
+  updatePhoto,
+  hashFile,
+  type Photo,
+} from "@/lib/photos";
 import { getCountryByAlpha3 } from "@/lib/countries";
 import CountrySelect from "@/components/CountrySelect";
 
@@ -150,6 +159,95 @@ function PhotoCard({
   );
 }
 
+type MigrateProgress = { done: number; failed: number; total: number };
+
+function MigrateToWebpButton({
+  photos,
+  onPhotoMigrated,
+}: {
+  photos: Photo[];
+  onPhotoMigrated: (id: string, data: Partial<Photo>) => void;
+}) {
+  const [migrating, setMigrating] = useState(false);
+  const [progress, setProgress] = useState<MigrateProgress | null>(null);
+
+  const targets = photos.filter((p) => !p.storagePath.toLowerCase().endsWith(".webp"));
+
+  async function handleMigrate() {
+    if (targets.length === 0) return;
+    if (
+      !confirm(
+        `총 ${targets.length}장을 WebP로 재압축해서 교체합니다.\n시간이 꽤 걸릴 수 있고, 이 탭을 닫으면 중단돼요.\n계속할까요?`
+      )
+    ) {
+      return;
+    }
+
+    setMigrating(true);
+    let done = 0;
+    let failed = 0;
+    setProgress({ done, failed, total: targets.length });
+
+    for (const photo of targets) {
+      try {
+        const res = await fetch(photo.imageUrl);
+        if (!res.ok) throw new Error("download failed");
+        const blob = await res.blob();
+        const sourceFile = new File([blob], "source", { type: blob.type || "image/jpeg" });
+        const hash = await hashFile(sourceFile);
+
+        const compressed = await imageCompression(sourceFile, {
+          maxSizeMB: 3,
+          maxWidthOrHeight: 2000,
+          initialQuality: 0.85,
+          fileType: "image/webp",
+          useWebWorker: true,
+        });
+
+        const newPath = `photos/${photo.countryCode}/${photo.city}/${crypto.randomUUID()}-migrated.webp`;
+        const newRef = ref(storage, newPath);
+        await uploadBytes(newRef, compressed);
+        const newUrl = await getDownloadURL(newRef);
+
+        const oldPath = photo.storagePath;
+        const updates = { imageUrl: newUrl, storagePath: newPath, contentHash: hash };
+        await updatePhoto(photo.id, updates);
+        await deleteObject(ref(storage, oldPath));
+
+        onPhotoMigrated(photo.id, updates);
+        done++;
+      } catch {
+        failed++;
+      }
+      setProgress({ done, failed, total: targets.length });
+    }
+
+    setMigrating(false);
+    alert(`재압축 완료: 성공 ${done}장, 실패 ${failed}장`);
+  }
+
+  if (targets.length === 0) return null;
+
+  return (
+    <div className="flex items-center gap-3 rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm dark:border-neutral-800 dark:bg-neutral-900">
+      <button
+        type="button"
+        onClick={handleMigrate}
+        disabled={migrating}
+        className="rounded-lg bg-amber-500 px-3 py-1.5 text-sm font-medium text-white hover:bg-amber-600 disabled:opacity-50"
+      >
+        {migrating ? "재압축 중..." : `기존 사진 WebP로 재압축 (${targets.length}장)`}
+      </button>
+      {progress && (
+        <span className="text-neutral-500 dark:text-neutral-400">
+          {progress.done + progress.failed} / {progress.total}
+          {progress.failed > 0 && ` (실패 ${progress.failed})`}
+        </span>
+      )}
+    </div>
+  );
+}
+
 function ManageList() {
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [loading, setLoading] = useState(true);
@@ -164,19 +262,27 @@ function ManageList() {
   if (photos.length === 0) return <p className="text-sm text-neutral-400">등록된 사진이 없어요.</p>;
 
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
-      {photos.map((photo) => (
-        <PhotoCard
-          key={photo.id}
-          photo={photo}
-          onDeleted={() => setPhotos((prev) => prev.filter((p) => p.id !== photo.id))}
-          onUpdated={(data) =>
-            setPhotos((prev) =>
-              prev.map((p) => (p.id === photo.id ? { ...p, ...data } : p))
-            )
-          }
-        />
-      ))}
+    <div className="flex flex-col gap-4">
+      <MigrateToWebpButton
+        photos={photos}
+        onPhotoMigrated={(id, data) =>
+          setPhotos((prev) => prev.map((p) => (p.id === id ? { ...p, ...data } : p)))
+        }
+      />
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+        {photos.map((photo) => (
+          <PhotoCard
+            key={photo.id}
+            photo={photo}
+            onDeleted={() => setPhotos((prev) => prev.filter((p) => p.id !== photo.id))}
+            onUpdated={(data) =>
+              setPhotos((prev) =>
+                prev.map((p) => (p.id === photo.id ? { ...p, ...data } : p))
+              )
+            }
+          />
+        ))}
+      </div>
     </div>
   );
 }
